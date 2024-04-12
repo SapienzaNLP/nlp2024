@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from datasets import load_dataset
+from datasets import DatasetDict, load_dataset
 from tap import Tap
 
 
@@ -8,7 +8,7 @@ class ScriptArgs(Tap):
     hf_dataset_name: str = (
         "stanfordnlp/sst2"  # The name of the Hugging Face dataset to convert to JSON
     )
-    output_dir: Path = "data"  # The directory to save the JSON file to
+    output_dir: Path = Path("data")  # The directory to save the JSON file to
 
     def process_args(self):
         # Ensure the output directory exists
@@ -21,12 +21,16 @@ class ScriptArgs(Tap):
 
 
 def run(args: ScriptArgs):
-    dataset = load_dataset(args.hf_dataset_name)
+    dataset: DatasetDict = load_dataset(args.hf_dataset_name)  # type: ignore
+
+    # Split the train dataset into train, validate.
+    # Use the validation set as test
+    splitted_dataset = dataset["train"].train_test_split(test_size=0.1)
 
     # Save the train, validate and test splits to JSON files
-    dataset["train"].to_json(args.train_file, orient="records", lines=True)
-    dataset["validation"].to_json(args.validate_file, orient="records", lines=True)
-    dataset["test"].to_json(args.test_file, orient="records", lines=True)
+    splitted_dataset["train"].to_json(args.train_file, orient="records", lines=True)
+    splitted_dataset["test"].to_json(args.validate_file, orient="records", lines=True)
+    dataset["validation"].to_json(args.test_file, orient="records", lines=True)
 
 
 if __name__ == "__main__":
